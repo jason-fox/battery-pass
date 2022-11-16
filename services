@@ -84,7 +84,7 @@ waitForMongo () {
 }
 
 stoppingContainers () {
-	CONTAINERS=$(docker ps --filter "label=org.fiware=tutorial" -aq)
+	CONTAINERS=$(docker ps --filter "label=org.fiware=demo" -aq)
 	if [[ -n $CONTAINERS ]]; then 
 		echo "Stopping containers"
 		docker rm -f $CONTAINERS || true
@@ -94,9 +94,9 @@ stoppingContainers () {
 		echo "Removing old volumes"
 		docker volume rm $VOLUMES || true
 	fi
-	NETWORKS=$(docker network ls  --filter "label=org.fiware=tutorial" -q) 
+	NETWORKS=$(docker network ls  --filter "label=org.fiware=demo" -q) 
 	if [[ -n $NETWORKS ]]; then 
-		echo "Removing tutorial networks"
+		echo "Removing demo networks"
 		docker network rm $NETWORKS || true
 	fi
 }

@@ -19,10 +19,40 @@
 version: "3.8"
 services:
 
-   # @context file is served from here
+  # @context file is served from here
+  ld-context:
+    labels:
+      org.fiware: 'demo'
+    image: httpd:alpine
+    hostname: context
+    container_name: fiware-ld-context
+    ports:
+        - "3004:80"
+    volumes:
+        - data-models:/usr/local/apache2/htdocs/
+    healthcheck:
+      test: (wget --server-response --spider --quiet  http://ld-context/ngsi-context.jsonld 2>&1 | awk 'NR==1{print $$2}'|  grep -q -e "200") || exit 1
+
+
+  proxy:
+    labels:
+      org.fiware: 'demo'
+    image: proxy
+    hostname: proxy
+    container_name: fiware-aas-bridge
+    ports:
+      - "3000:3000"
+    environment:
+      - DEBUG=aas:*
+      - PORT=3000
+      - CONTEXT_URL=http://context/ngsi-context.jsonld
+      - BROKER_URL=http://orion:1026
+      - AAS_URL= http://aasx-server1:51310
+
+  # Adminstrative Asset Shell
   aasx-server1:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: adminshellio/aasx-server-core-for-demo
     hostname: aasx-server1
     container_name: aasx-server1
@@ -55,7 +85,7 @@ services:
   # @context file is served from here
   ld-context:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: httpd:alpine
     hostname: context
     container_name: fiware-ld-context
@@ -69,7 +99,7 @@ services:
   # Databases
   mongo-db:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: mongo:${MONGO_DB_VERSION}
     hostname: mongo-db
     container_name: db-mongo
@@ -89,7 +119,7 @@ services:
 
   mongo-db2:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: mongo:${MONGO_DB_VERSION}
     hostname: mongo-db2
     container_name: db-mongo-2
@@ -100,7 +130,7 @@ services:
 
   mongo-db3:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: mongo:${MONGO_DB_VERSION}
     hostname: mongo-db2
     container_name: db-mongo-3
@@ -113,7 +143,7 @@ services:
   # Orion is the context broker
   orion:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: fiware/orion-ld:${ORION_LD_VERSION}
     hostname: orion
     container_name: fiware-orion
@@ -131,7 +161,7 @@ services:
 
   orion2:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: fiware/orion-ld:${ORION_LD_VERSION}
     hostname: orion2
     container_name: fiware-orion-2
@@ -145,7 +175,7 @@ services:
 
   orion3:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     image: fiware/orion-ld:${ORION_LD_VERSION}
     hostname: orion3
     container_name: fiware-orion-3
@@ -161,7 +191,7 @@ services:
 networks:
   default:
     labels:
-      org.fiware: 'tutorial'
+      org.fiware: 'demo'
     ipam:
       config:
         - subnet: 172.18.1.0/24
