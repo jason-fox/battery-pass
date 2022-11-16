@@ -1,0 +1,30 @@
+{
+    "@context": {
+        "type": "@type",
+        "id": "@id",
+        "admin-shell": "http://admin-shell-io.com/data-models/",
+        "hasDataSpecification": "admin-shell:hasDataSpecification",
+        "dataSpecification" : "admin-shell:dataSpecification",
+        "keys" : "admin-shell:keys",
+        "derivedFrom": "admin-shell:derivedFrom",
+        "local": "admin-shell:local",
+        "index": "admin-shell:index",
+        "idType": "admin-shell:idType", 
+        "asset": "admin-shell:asset", 
+        "submodels": "admin-shell:submodels",
+        "conceptDictionaries": "admin-shell:conceptDictionaries",
+        "identification":  "admin-shell:identification",
+        "idShort":  "admin-shell:idShort",
+        "category":  "admin-shell:category",
+        "modelType": "admin-shell:modelType",
+        "name":  "admin-shell:name",
+        "assetIdentificationModelRef":  "admin-shell:assetIdentificationModelRef",
+        "administration": "admin-shell:administration",
+        "version": "admin-shell:version",
+        "revision": "admin-shell:revision",
+        "kind": "admin-shell:kind",
+        "semanticId": "admin-shell:semanticId",
+        "submodelElements": "admin-shell:submodelElements",
+        "mimeType": "admin-shell:mimeType"
+    }
+}

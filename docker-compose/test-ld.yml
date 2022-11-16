@@ -1,0 +1,183 @@
+# WARNING: Do not deploy this tutorial configuration directly to a production environment
+#
+# The tutorial docker-compose files have not been written for production deployment and will not 
+# scale. A proper architecture has been sacrificed to keep the narrative focused on the learning 
+# goals, they are just used to deploy everything onto a single Docker machine. All FIWARE components 
+# are running at full debug and extra ports have been exposed to allow for direct calls to services. 
+# They also contain various obvious security flaws - passwords in plain text, no load balancing,
+# no use of HTTPS and so on. 
+# 
+# This is all to avoid the need of multiple machines, generating certificates, encrypting secrets
+# and so on, purely so that a single docker-compose file can be read as an example to build on, 
+# not use directly. 
+# 
+# When deploying to a production environment, please refer to the Helm Repository
+# for FIWARE Components in order to scale up to a proper architecture:
+# 
+# see: https://github.com/FIWARE/helm-charts/
+#
+version: "3.8"
+services:
+
+   # @context file is served from here
+  aasx-server1:
+    labels:
+      org.fiware: 'tutorial'
+    image: adminshellio/aasx-server-core-for-demo
+    hostname: aasx-server1
+    container_name: aasx-server1
+    ports:
+        - "51310:51310"
+    command: -rest 
+    volumes:
+        - aasx-models:/AasxServerCore/aasxs
+    networks:
+      - default
+
+
+  # Other services
+  mosquitto:
+    image: eclipse-mosquitto:1.6.14
+    hostname: mosquitto
+    container_name: mosquitto
+    expose:
+      - "1883"
+      - "9001"
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ../mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - default
+
+
+  # @context file is served from here
+  ld-context:
+    labels:
+      org.fiware: 'tutorial'
+    image: httpd:alpine
+    hostname: context
+    container_name: fiware-ld-context
+    ports:
+        - "3004:80"
+    volumes:
+        - data-models:/usr/local/apache2/htdocs/
+    healthcheck:
+      test: (wget --server-response --spider --quiet  http://ld-context/ngsi-context.jsonld 2>&1 | awk 'NR==1{print $$2}'|  grep -q -e "200") || exit 1
+
+  # Databases
+  mongo-db:
+    labels:
+      org.fiware: 'tutorial'
+    image: mongo:${MONGO_DB_VERSION}
+    hostname: mongo-db
+    container_name: db-mongo
+    ports:
+      - 27017:27017 # localhost:27017
+    networks:
+      - default
+    volumes:
+      - mongo-db:/data/db
+      - mongo-config:/data/configdb
+    healthcheck:
+      test: |
+        host=`hostname --ip-address || echo '127.0.0.1'`; 
+        mongo --quiet $host/test --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)' && echo 0 || echo 1    
+      interval: 5s
+
+
+  mongo-db2:
+    labels:
+      org.fiware: 'tutorial'
+    image: mongo:${MONGO_DB_VERSION}
+    hostname: mongo-db2
+    container_name: db-mongo-2
+    ports:
+      - 27018:27017 # localhost:27017
+    networks:
+      - default
+
+  mongo-db3:
+    labels:
+      org.fiware: 'tutorial'
+    image: mongo:${MONGO_DB_VERSION}
+    hostname: mongo-db2
+    container_name: db-mongo-3
+    ports:
+      - 27019:27017 # localhost:27017
+    networks:
+      - default
+
+
+  # Orion is the context broker
+  orion:
+    labels:
+      org.fiware: 'tutorial'
+    image: fiware/orion-ld:${ORION_LD_VERSION}
+    hostname: orion
+    container_name: fiware-orion
+    depends_on:
+      - mongo-db
+    networks:
+      - default
+    ports:
+      - 1026:1026
+    command: -dbhost mongo-db -logLevel DEBUG -forwarding -experimental
+    healthcheck:
+      test: curl --fail -s http://orion:1026/version || exit 1
+      interval: 5s
+
+
+  orion2:
+    labels:
+      org.fiware: 'tutorial'
+    image: fiware/orion-ld:${ORION_LD_VERSION}
+    hostname: orion2
+    container_name: fiware-orion-2
+    depends_on:
+      - mongo-db
+    networks:
+      - default
+    ports:
+      - "1027:1026" # localhost:1026
+    command: -dbhost mongo-db2 -logLevel DEBUG -forwarding -experimental
+
+  orion3:
+    labels:
+      org.fiware: 'tutorial'
+    image: fiware/orion-ld:${ORION_LD_VERSION}
+    hostname: orion3
+    container_name: fiware-orion-3
+    depends_on:
+      - mongo-db
+    networks:
+      - default
+    ports:
+      - "1028:${ORION_LD_PORT}" # localhost:1026
+    command: -dbhost mongo-db3 -logLevel DEBUG -forwarding -experimental
+
+
+networks:
+  default:
+    labels:
+      org.fiware: 'tutorial'
+    ipam:
+      config:
+        - subnet: 172.18.1.0/24
+
+volumes:
+  mongo-db: ~
+  mongo-config: ~
+  data-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data-models
+  aasx-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/aasxs
