@@ -25,6 +25,14 @@
         "kind": "admin-shell:kind",
         "semanticId": "admin-shell:semanticId",
         "submodelElements": "admin-shell:submodelElements",
-        "mimeType": "admin-shell:mimeType"
+        "mimeType": "admin-shell:mimeType",
+        "ordered": "admin-shell:ordered",
+        "allowDuplicates": "admin-shell:allowDuplicates",
+        "constraints": "admin-shell:constraints",
+
+        "I4AAS": "admin-shell:I4AAS",
+        "I4Asset": "admin-shell:I4Asset",
+        "I4Submodel": "admin-shell:I4Submodel",
+        "I4SubmodelProperty": "admin-shell:I4SubmodelProperty"
     }
 }
