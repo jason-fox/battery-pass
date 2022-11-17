@@ -4,7 +4,7 @@ Start up using
 ./services test3
 ```
 
-Wait for AAS, get the lisy:
+Wait for AAS, get the list of available shells:
 
 ```console
 curl -L -X GET 'http://localhost:51310/server/listaas'
