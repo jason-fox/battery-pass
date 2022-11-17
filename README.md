@@ -45,8 +45,15 @@ curl -L -X GET 'http://localhost:1026/ngsi-ld/v1/entities/urn:ngsi-ld:I4AAS:PK.F
 
 GET using `q`
 
-```
+```console
 curl -L -X GET 'http://localhost:1026/ngsi-ld/v1/entities/?q=idShort=="Festo_3S7PM0CP4BD"' \
 -H 'Link: <http://context/ngsi-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
 ```
+
+```console
+curl -L -g -X GET 'http://localhost:1026/ngsi-ld/v1/entities/?q=modelType[name]=="AssetAdministrationShell"' \
+-H 'Link: <http://context/ngsi-context.jsonld>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
+```
+
+
 
