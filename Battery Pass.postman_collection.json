@@ -1,0 +1,600 @@
+{
+	"info": {
+		"_postman_id": "1a4be058-d0a1-4ddc-b112-a955a8024d6e",
+		"name": "Battery Pass",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "513743"
+	},
+	"item": [
+		{
+			"name": "AAS",
+			"item": [
+				{
+					"name": "New Request Copy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:51311/server/listaas",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "51311",
+							"path": [
+								"server",
+								"listaas"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "New Request Copy 2",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:51310/aas/Festo_3S7PM0CP4BD",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "51310",
+							"path": [
+								"aas",
+								"Festo_3S7PM0CP4BD"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "New Request Copy 2",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:51310/aas/Festo_OVEL-10-H-15-PQ-VQ6-UA-C-A-B2PNLK-H3_99920200616233035000015777/aasenv",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "51310",
+							"path": [
+								"aas",
+								"Festo_OVEL-10-H-15-PQ-VQ6-UA-C-A-B2PNLK-H3_99920200616233035000015777",
+								"aasenv"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "New Request Copy 2",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:51310/aas/SE_Tesys_Island_Header/aasenv",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "51310",
+							"path": [
+								"aas",
+								"SE_Tesys_Island_Header",
+								"aasenv"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "New Request Copy 3",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:51310/aas/SE_Tesys_Island_Power/aasenv",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "51310",
+							"path": [
+								"aas",
+								"SE_Tesys_Island_Power",
+								"aasenv"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Context Broker",
+			"item": [
+				{
+					"name": "Get Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1027/ngsi-ld/v1/types",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1027",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Individual Asset",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1026/ngsi-ld/v1/entities/urn:ngsi-ld:I4Asset:digital.sick.com/shells/1089794/89abc7853:SICK_SIG200_0A0412200_1089794/?options=keyValues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1026",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"entities",
+								"urn:ngsi-ld:I4Asset:digital.sick.com",
+								"shells",
+								"1089794",
+								"89abc7853:SICK_SIG200_0A0412200_1089794",
+								""
+							],
+							"query": [
+								{
+									"key": "options",
+									"value": "keyValues"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Asset by Short Id",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1026/ngsi-ld/v1/entities/?q=idShort==\"Festo_3S7PM0CP4BD\"&options=keyValues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1026",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"entities",
+								""
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "idShort==\"Festo_3S7PM0CP4BD\""
+								},
+								{
+									"key": "options",
+									"value": "keyValues"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Asset by modelType",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1026/ngsi-ld/v1/entities/?q=modelType[name]==\"Asset\"&options=keyValues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1026",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"entities",
+								""
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "modelType[name]==\"Asset\""
+								},
+								{
+									"key": "options",
+									"value": "keyValues"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Asset by ID in CB",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1026/ngsi-ld/v1/entities/urn:ngsi-ld:I4Asset:digital.sick.com/shells/1089794/89abc7853:SICK_SIG200_0A0412200_1089794/?options=keyValues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1026",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"entities",
+								"urn:ngsi-ld:I4Asset:digital.sick.com",
+								"shells",
+								"1089794",
+								"89abc7853:SICK_SIG200_0A0412200_1089794",
+								""
+							],
+							"query": [
+								{
+									"key": "options",
+									"value": "keyValues"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register one hop",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"ContextSourceRegistration\",\n    \"information\": [\n        {\n            \"entities\": [\n                {\n                    \"type\": \"I4Asset\"\n                }\n            ]\n        }\n    ],\n    \"endpoint\": \"http://orion:1026\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:1027/ngsi-ld/v1/csourceRegistrations/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1027",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"csourceRegistrations",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register two hop",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"ContextSourceRegistration\",\n    \"information\": [\n        {\n            \"entities\": [\n                {\n                    \"type\": \"Asset\"\n                }\n            ]\n        }\n    ],\n    \"endpoint\": \"http://orion2:1026\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:1028/ngsi-ld/v1/csourceRegistrations/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1028",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"csourceRegistrations",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register two hop Copy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"ContextSourceRegistration\",\n    \"information\": [\n        {\n            \"entities\": [\n                {\n                    \"type\": \"Asset\"\n                }\n            ]\n        }\n    ],\n    \"endpoint\": \"http://orion2:1026\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:1028/ngsi-ld/v1/csourceRegistrations/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1028",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"csourceRegistrations",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register two hop Copy 2",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"type\": \"ContextSourceRegistration\",\n    \"information\": [\n        {\n            \"entities\": [\n                {\n                    \"type\": \"Asset\"\n                }\n            ]\n        }\n    ],\n    \"endpoint\": \"http://orion2:1026\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:1028/ngsi-ld/v1/csourceRegistrations/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1028",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"csourceRegistrations",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Registration State",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1027/ngsi-ld/v1/csourceRegistrations/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1027",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"csourceRegistrations",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get 2 hop assets by ID in CB",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1028/ngsi-ld/v1/entities/urn:ngsi-ld:I4Asset:digital.sick.com/shells/1089794/89abc7853:SICK_SIG200_0A0412200_1089794/?options=keyValues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1028",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"entities",
+								"urn:ngsi-ld:I4Asset:digital.sick.com",
+								"shells",
+								"1089794",
+								"89abc7853:SICK_SIG200_0A0412200_1089794",
+								""
+							],
+							"query": [
+								{
+									"key": "options",
+									"value": "keyValues"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get 2 hop Individual Asset",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Link",
+								"value": "<http://context/ngsi-context.jsonld>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:1026/ngsi-ld/v1/entities/urn:ngsi-ld:I4AAS:PK.FESTO.COM/3S7PM0CP4BD/?options=keyValues",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "1026",
+							"path": [
+								"ngsi-ld",
+								"v1",
+								"entities",
+								"urn:ngsi-ld:I4AAS:PK.FESTO.COM",
+								"3S7PM0CP4BD",
+								""
+							],
+							"query": [
+								{
+									"key": "options",
+									"value": "keyValues"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "New Request",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Fill Broker 2",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3001/aas/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3001",
+					"path": [
+						"aas",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Fill Broker 1",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/aas/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"aas",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

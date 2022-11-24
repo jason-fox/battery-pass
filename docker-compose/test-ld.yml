@@ -34,12 +34,12 @@ services:
       test: (wget --server-response --spider --quiet  http://ld-context/ngsi-context.jsonld 2>&1 | awk 'NR==1{print $$2}'|  grep -q -e "200") || exit 1
 
 
-  proxy:
+  proxy1:
     labels:
       org.fiware: 'demo'
     image: proxy
-    hostname: proxy
-    container_name: fiware-aas-bridge
+    hostname: proxy1
+    container_name: fiware-aas-bridge1
     ports:
       - "3000:3000"
     environment:
@@ -48,6 +48,21 @@ services:
       - CONTEXT_URL=http://context/ngsi-context.jsonld
       - BROKER_URL=http://orion:1026
       - AAS_URL= http://aasx-server1:51310
+
+  proxy2:
+    labels:
+      org.fiware: 'demo'
+    image: proxy
+    hostname: proxy2
+    container_name: fiware-aas-bridge2
+    ports:
+      - "3001:3000"
+    environment:
+      - DEBUG=aas:*
+      - PORT=3000
+      - CONTEXT_URL=http://context/ngsi-context.jsonld
+      - BROKER_URL=http://orion2:1026
+      - AAS_URL= http://aasx-server2:51310
 
   # Adminstrative Asset Shell
   aasx-server1:
@@ -64,22 +79,35 @@ services:
     networks:
       - default
 
-
-  # Other services
-  mosquitto:
-    image: eclipse-mosquitto:1.6.14
-    hostname: mosquitto
-    container_name: mosquitto
-    expose:
-      - "1883"
-      - "9001"
+    # Adminstrative Asset Shell
+  aasx-server2:
+    labels:
+      org.fiware: 'demo'
+    image: adminshellio/aasx-server-core-for-demo
+    hostname: aasx-server2
+    container_name: aasx-server2
     ports:
-      - "1883:1883"
-      - "9001:9001"
-    volumes:
-      - ../mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+        - "51311:51310"
+    command: -rest 
     networks:
       - default
+
+
+  # Other services
+  #mosquitto:
+  #  image: eclipse-mosquitto:1.6.14
+  #  hostname: mosquitto
+    # container_name: mosquitto
+    # expose:
+    #   - "1883"
+    #   - "9001"
+    # ports:
+    #   - "1883:1883"
+    #   - "9001:9001"
+    # volumes:
+    #   - ../mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    # networks:
+    #   - default
 
 
   # @context file is served from here

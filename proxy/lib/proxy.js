@@ -17,9 +17,10 @@ const path = require('node:path');
 const jsonld = require('jsonld');
 const parseLinks = require('parse-links');
 
-const PROXY_URL = process.env.PROXY || 'http://localhost:1026/v2'
-const NGSI_LD_URN = 'urn:ngsi-ld:'; 
-const JSON_LD_CONTEXT = process.env.CONTEXT_URL || 'https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld';
+const PROXY_URL = process.env.PROXY || 'http://localhost:1026/v2';
+const NGSI_LD_URN = 'urn:ngsi-ld:';
+const JSON_LD_CONTEXT =
+    process.env.CONTEXT_URL || 'https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld';
 const TIMESTAMP_ATTRIBUTE = 'TimeInstant';
 const DATETIME_DEFAULT = '1970-01-01T00:00:00.000Z';
 const ATTRIBUTE_DEFAULT = null;
@@ -52,24 +53,23 @@ function isFloat(value) {
  * @return a string representation of the X-forwarded-for header
  */
 function getClientIp(req) {
-  let ip = req.ip;
-  if (ip.substr(0, 7) === '::ffff:') {
-    ip = ip.substr(7);
-  }
-  let forwardedIpsStr = req.header('x-forwarded-for');
+    let ip = req.ip;
+    if (ip.substr(0, 7) === '::ffff:') {
+        ip = ip.substr(7);
+    }
+    let forwardedIpsStr = req.header('x-forwarded-for');
 
-  if (forwardedIpsStr) {
-    // 'x-forwarded-for' header may return multiple IP addresses in
-    // the format: "client IP, proxy 1 IP, proxy 2 IP" so take the
-    // the first one
-    forwardedIpsStr += ',' + ip;
-  } else {
-    forwardedIpsStr = String(ip);
-  }
+    if (forwardedIpsStr) {
+        // 'x-forwarded-for' header may return multiple IP addresses in
+        // the format: "client IP, proxy 1 IP, proxy 2 IP" so take the
+        // the first one
+        forwardedIpsStr += ',' + ip;
+    } else {
+        forwardedIpsStr = String(ip);
+    }
 
-  return forwardedIpsStr;
+    return forwardedIpsStr;
 }
-
 
 /**
  * Amends an NGSIv2 attribute to NGSI-LD format
@@ -204,15 +204,14 @@ function convertAttrNGSILD(attr, transformFlags) {
         delete obj.TimeInstant;
     }
 
-    if (transformFlags.concise){
-      delete obj.type;
-      if (obj.value && (_.isEmpty(attr.metadata))){
-         obj = obj.value;
-      }
+    if (transformFlags.concise) {
+        delete obj.type;
+        if (obj.value && _.isEmpty(attr.metadata)) {
+            obj = obj.value;
+        }
     }
     return obj;
 }
-
 
 /**
  * Return an "Internal Error" response. These should not occur
@@ -223,34 +222,17 @@ function convertAttrNGSILD(attr, transformFlags) {
  * @param component - the component that caused the error
  */
 function internalError(res, e, component) {
-  const message = e ? e.message : undefined;
-  debug(`Error in ${component} communication `, message ? message : e);
-  res.setHeader('Content-Type', error_content_type);
-  res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(
-    template({
-      type: 'urn:dx:as:InternalServerError',
-      title: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
-      message
-    })
-  );
+    const message = e ? e.message : undefined;
+    debug(`Error in ${component} communication `, message ? message : e);
+    res.setHeader('Content-Type', error_content_type);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(
+        template({
+            type: 'urn:dx:as:InternalServerError',
+            title: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
+            message
+        })
+    );
 }
-
-async function getRealAttrs (queryAttrs, context, proxyContext ){
-   
-    const obj = {
-        '@context': context
-    };
-    queryAttrs.forEach(function (key) {
-      obj[key] = {};
-    });
-    
-    const expanded = await jsonld.expand(obj);
-    const compacted = await jsonld.compact(expanded, proxyContext);
-    delete compacted['@context'];
-
-    return Object.keys(compacted);
-}
-
 
 /**
  * "Access Permitted" forwarding. Forward the proxied request and
@@ -260,41 +242,33 @@ async function getRealAttrs (queryAttrs, context, proxyContext ){
  * @param res - the response to return
  */
 async function proxyResponse(req, res) {
-  const headers = req.headers;
-  const contentType = req.get('Accept');
-  const bodyIsJSONLD = (req.get('Accept') === 'application/ld+json');
-  const queryOptions = req.query.options ? req.query.options.split(',') : null;
-  const queryAttrs = req.query.attrs ? req.query.attrs.split(',') : null;
+    const headers = req.headers;
+    const contentType = req.get('Accept');
+    const bodyIsJSONLD = req.get('Accept') === 'application/ld+json';
+    const queryOptions = req.query.options ? req.query.options.split(',') : null;
+    const queryAttrs = req.query.attrs ? req.query.attrs.split(',') : null;
 
-  const transformFlags = {};
-  transformFlags.concise = !!(queryOptions && queryOptions.includes('concise'));
-  transformFlags.keyValues = !!(queryOptions && queryOptions.includes('keyValues'));
-  transformFlags.attrsOnly = req.path.split(path.sep).includes('attrs');
-  let v2queryOptions = null;
-  let v2queryAttrs = null;
-  let ldPayload = null;
-  if (req.query.options){
-    v2queryOptions = _.without(queryOptions, 'concise');
-  }
-
-  if (req.query.attrs){
-    const links = parseLinks(headers.link);
-    v2queryAttrs = await getRealAttrs(queryAttrs, links.context, NGSI_LD_CONTEXT);
-  }
-
-
+    const transformFlags = {};
+    transformFlags.concise = !!(queryOptions && queryOptions.includes('concise'));
+    transformFlags.keyValues = !!(queryOptions && queryOptions.includes('keyValues'));
+    transformFlags.attrsOnly = req.path.split(path.sep).includes('attrs');
+    let v2queryOptions = null;
+    let ldPayload = null;
+    if (req.query.options) {
+        v2queryOptions = _.without(queryOptions, 'concise');
+    }
 
     /**
-   * Amends an NGSIv2 payload to NGSI-LD format
-   *
-   * @param      {Object}   value       JSON to be converted
-   * @return     {Object}               NGSI-LD payload
-   */
+     * Amends an NGSIv2 payload to NGSI-LD format
+     *
+     * @param      {Object}   value       JSON to be converted
+     * @return     {Object}               NGSI-LD payload
+     */
 
     function formatAsNGSILD(json) {
-        const obj = { }
-        if (bodyIsJSONLD){
-          obj['@context'] = NGSI_LD_CONTEXT;
+        const obj = {};
+        if (bodyIsJSONLD) {
+            obj['@context'] = NGSI_LD_CONTEXT;
         }
 
         let id;
@@ -324,71 +298,70 @@ async function proxyResponse(req, res) {
         return obj;
     }
 
+    headers['x-forwarded-for'] = getClientIp(req);
+    headers['accept'] = 'application/json';
 
+    options = {
+        method: req.method,
+        headers,
+        throwHttpErrors: false,
+        retry: 0
+    };
 
-  headers['x-forwarded-for'] = getClientIp(req);
-  headers['accept'] = 'application/json';
+    if (req.query) {
+        options.searchParams = req.query;
+        delete options.searchParams.options;
+        if (v2queryOptions && v2queryOptions.length > 0) {
+            options.searchParams.options = v2queryOptions.join(',');
+        }
 
-  options =  {
-    method: req.method,
-    headers,
-    throwHttpErrors: false,
-    retry: 0
-  };
-
-  if (req.query){
-    options.searchParams = req.query
-    delete options.searchParams.options;
-    if (v2queryOptions && v2queryOptions.length > 0 ){
-      options.searchParams.options = v2queryOptions.join(',')
+        if (queryAttrs && queryAttrs.length > 0) {
+            options.searchParams.attrs = queryAttrs.join(',');
+        }
     }
 
-    if (v2queryAttrs && v2queryAttrs.length > 0 ){
-      options.searchParams.attrs = v2queryAttrs.join(',')
-    }
-  }
+    got(PROXY_URL + req.path, options)
+        .then((response) => {
+            res.statusCode = response.statusCode;
+            res.headers = response.headers;
+            res.headers['content-type'] = contentType;
+            res.type(contentType);
+            const body = JSON.parse(response.body);
+            if (res.statusCode === 400) {
+                res.headers['content-type'] = 'application/json';
+                return res.send(body);
+            }
 
+            if (!bodyIsJSONLD) {
+                res.header(
+                    'Link',
+                    '<' + NGSI_LD_CONTEXT + '>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
+                );
+            }
 
-  got(PROXY_URL + req.path, options)
-    .then((response) => {
-      res.statusCode = response.statusCode;
-      res.headers = response.headers;
-      res.headers['content-type'] =   contentType;
-      res.type(contentType);
-      const body = JSON.parse(response.body);
-      if (res.statusCode === 400){
-        res.headers['content-type'] = 'application/json';
-        return  res.send(body);
-      }
+            if (transformFlags.keyValues) {
+                ldPayload = body;
+                if (bodyIsJSONLD) {
+                    ldPayload['@context'] = NGSI_LD_CONTEXT;
+                }
+            } else if (transformFlags.attrsOnly) {
+                ldPayload = convertAttrNGSILD(body, transformFlags);
+                if (bodyIsJSONLD) {
+                    ldPayload['@context'] = NGSI_LD_CONTEXT;
+                }
+            } else if (body instanceof Array) {
+                ldPayload = _.map(body, formatAsNGSILD);
+            } else {
+                ldPayload = formatAsNGSILD(body);
+            }
 
-      if(!bodyIsJSONLD){
-         res.header('Link' ,'<' + NGSI_LD_CONTEXT + '>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"');
-      }
-     
-      if (transformFlags.keyValues) {
-        ldPayload = body;
-        if (bodyIsJSONLD){
-          ldPayload['@context'] = NGSI_LD_CONTEXT;
-        }
-      } else if (transformFlags.attrsOnly) {
-        ldPayload = convertAttrNGSILD(body, transformFlags)
-        if (bodyIsJSONLD){
-          ldPayload['@context'] = NGSI_LD_CONTEXT;
-        }
-      } else if (body instanceof Array) {
-          ldPayload = _.map(body, formatAsNGSILD);
-      } else {
-          ldPayload = formatAsNGSILD(body);
-      }
-
-      return  ldPayload ? res.send(ldPayload) : res.send();
-    })
-    .catch((error) => {
-      debug(error)
-      return internalError(res, error, 'Proxy');
-    });
+            return ldPayload ? res.send(ldPayload) : res.send();
+        })
+        .catch((error) => {
+            debug(error);
+            return internalError(res, error, 'Proxy');
+        });
 }
 
 exports.response = proxyResponse;
 exports.internalError = internalError;
-

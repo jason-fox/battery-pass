@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node ./bin/www",
+    "prettier": "prettier --config .prettierrc.json --write **/**/*.js  **/*.js *.js"
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
@@ -19,5 +20,8 @@
     "moment-timezone": "~0.5.34",
     "morgan": "~1.9.1",
     "parse-links": "^0.1.0"
+  },
+  "devDependencies": {
+    "prettier": "~2.6.2"
   }
 }
