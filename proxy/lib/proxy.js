@@ -210,6 +210,8 @@ function convertAttrNGSILD(attr, transformFlags) {
             obj = obj.value;
         }
     }
+
+    delete obj.metadata;
     return obj;
 }
 
@@ -249,13 +251,14 @@ async function proxyResponse(req, res) {
     const queryAttrs = req.query.attrs ? req.query.attrs.split(',') : null;
 
     const transformFlags = {};
+    transformFlags.sysAttrs = !!(queryOptions && queryOptions.includes('sysAttrs'));
     transformFlags.concise = !!(queryOptions && queryOptions.includes('concise'));
     transformFlags.keyValues = !!(queryOptions && queryOptions.includes('keyValues'));
     transformFlags.attrsOnly = req.path.split(path.sep).includes('attrs');
     let v2queryOptions = null;
     let ldPayload = null;
     if (req.query.options) {
-        v2queryOptions = _.without(queryOptions, 'concise');
+        v2queryOptions = _.without(queryOptions, 'concise', 'sysAttrs');
     }
 
     /**
@@ -268,7 +271,7 @@ async function proxyResponse(req, res) {
     function formatAsNGSILD(json) {
         const obj = {};
         if (bodyIsJSONLD) {
-            obj['@context'] = NGSI_LD_CONTEXT;
+            obj['@context'] = JSON_LD_CONTEXT;
         }
 
         let id;
@@ -320,6 +323,11 @@ async function proxyResponse(req, res) {
         }
     }
 
+    if (transformFlags.sysAttrs){
+        options.searchParams = options.searchParams || {};
+        options.searchParams.sysAttrs = 'true'
+    }
+
     got(PROXY_URL + req.path, options)
         .then((response) => {
             res.statusCode = response.statusCode;
@@ -335,19 +343,19 @@ async function proxyResponse(req, res) {
             if (!bodyIsJSONLD) {
                 res.header(
                     'Link',
-                    '<' + NGSI_LD_CONTEXT + '>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
+                    '<' + JSON_LD_CONTEXT + '>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
                 );
             }
 
             if (transformFlags.keyValues) {
                 ldPayload = body;
                 if (bodyIsJSONLD) {
-                    ldPayload['@context'] = NGSI_LD_CONTEXT;
+                    ldPayload['@context'] = JSON_LD_CONTEXT;
                 }
             } else if (transformFlags.attrsOnly) {
                 ldPayload = convertAttrNGSILD(body, transformFlags);
                 if (bodyIsJSONLD) {
-                    ldPayload['@context'] = NGSI_LD_CONTEXT;
+                    ldPayload['@context'] = JSON_LD_CONTEXT;
                 }
             } else if (body instanceof Array) {
                 ldPayload = _.map(body, formatAsNGSILD);
