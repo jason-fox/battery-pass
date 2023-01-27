@@ -316,7 +316,7 @@ async function proxyResponse(req, res) {
         options.searchParams = req.query;
         delete options.searchParams.options;
 
-        if (queryType.length > 1){
+        if (queryType.length > 1) {
             delete options.searchParams.type;
         }
         if (v2queryOptions && v2queryOptions.length > 0) {
@@ -328,9 +328,9 @@ async function proxyResponse(req, res) {
         }
     }
 
-    if (transformFlags.sysAttrs){
+    if (transformFlags.sysAttrs) {
         options.searchParams = options.searchParams || {};
-        options.searchParams.sysAttrs = 'true'
+        options.searchParams.sysAttrs = 'true';
     }
 
     got(PROXY_URL + req.path, options)
@@ -346,7 +346,7 @@ async function proxyResponse(req, res) {
                 return res.send(body);
             }
 
-            if (queryType.length > 1 && !queryType.includes(type) ){
+            if (queryType.length > 1 && !queryType.includes(type)) {
                 res.statusCode === 404;
                 return res.send();
             }

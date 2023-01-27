@@ -4,11 +4,13 @@ const StatusCodes = require('http-status-codes').StatusCodes;
 const getReasonPhrase = require('http-status-codes').getReasonPhrase;
 const _ = require('lodash');
 
+const base64 = require('base-64');
+
 const NGSI_LD_URN = 'urn:ngsi-ld:';
 const JSON_LD_CONTEXT =
     process.env.CONTEXT_URL || 'https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld';
 const CONTEXT_BROKER = process.env.BROKER_URL || 'http://localhost:1026';
-const AAS_SERVER = process.env.AAS_URL || 'http://localhost:51310';
+const AAS_SERVER = process.env.AAS_URL || 'http://localhost:5001';
 
 const template = require('handlebars').compile(
     `{
@@ -23,7 +25,7 @@ const error_content_type = 'application/json';
 function treatBody(body) {
     const payload = {};
     _.each(_.keys(body), (key) => {
-        if (payload[key] !== null) {
+        if (body[key] !== null) {
             payload[key] = { type: 'Property', value: body[key] };
         }
     });
@@ -79,17 +81,21 @@ function transformAAS(aas, assetId) {
 
     (payload.type = 'I4AAS'), (payload.id = `urn:ngsi-ld:I4AAS:${assetId.replace(/^https?\:\/\//i, '')}`);
 
+    debug(payload.id);
     return payload;
 }
 
 function transformAsset(asset, assetId) {
+    if (!asset || !asset.idShort){
+        return null;
+    }
+
     const payload = treatBody(asset);
     const id = encodeURI(assetId + ':' + asset.idShort.trim());
 
     (payload.type = 'I4Asset'), (payload.id = `urn:ngsi-ld:I4Asset:${id.replace(/^https?\:\/\//i, '')}`);
 
     debug(payload.id);
-
     return payload;
 }
 
@@ -99,6 +105,7 @@ function transformSubmodel(submodel, assetId) {
 
     (payload.type = 'I4Submodel'), (payload.id = `urn:ngsi-ld:I4Submodel:${id.replace(/^https?\:\/\//i, '')}`);
 
+    debug(payload.id);
     return payload;
 }
 
@@ -112,77 +119,105 @@ function transformSubmodelElement(element, submodelId, assetId) {
     return payload;
 }
 
-function upsertNGSI(entities) {
-    return new Promise((resolve, reject) => {
-        if (_.isEmpty(entities)) {
-            return resolve();
+async function upsertNGSI(entities) {
+    if (_.isEmpty(entities)) {
+        return 0;
+    }
+
+    const options = {
+        url: `${CONTEXT_BROKER}/ngsi-ld/v1/entityOperations/upsert/`,
+        method: 'POST',
+        json: entities,
+        headers: {
+            'Content-Type': 'application/json',
+            Link: `<${JSON_LD_CONTEXT}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`
         }
-
-        const options = {
-            url: `${CONTEXT_BROKER}/ngsi-ld/v1/entityOperations/upsert/`,
-            method: 'POST',
-            json: entities,
-            headers: {
-                'Content-Type': 'application/json',
-                Link: `<${JSON_LD_CONTEXT}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`
-            }
-        };
-
-        got(options)
-            .then((response) => {
-                return resolve();
-            })
-            .catch((error) => {
-                return reject(error);
-            });
-    });
+    };
+    response = await got(options);
+    return response.statusCode;
 }
 
-function getAAS(id) {
-    return new Promise((resolve, reject) => {
-        const options = {
-            method: 'GET',
-            throwHttpErrors: false,
-            retry: 0
-        };
-        let ngsiEntities = [];
+async function readSubmodel(id, submodelId) {
+    const options = {
+        method: 'GET',
+        throwHttpErrors: false,
+        retry: 0
+    };
+    const idBase64 = base64.encode(id);
+    const submodelIdBase64 = base64.encode(submodelId);
+    const response = await got(`${AAS_SERVER}/shells/${idBase64}/aas/submodels/${submodelIdBase64}/submodel`, options);
+    return JSON.parse(response.body);
+}
 
-        got(`${AAS_SERVER}/aas/${id}/aasenv`, options)
-            .then((response) => {
-                try {
-                    const body = JSON.parse(response.body);
-                    body.assetAdministrationShells.forEach((shell) => {
-                        if (!_.isEmpty(shell.asset.keys)) {
-                            const id = encodeURI(shell.asset.keys[0].value);
-                            ngsiEntities.push(transformAAS(shell, id));
-                            ngsiEntities.push(transformAsset(body.assets[0], id));
+async function readAsset(id) {
+    const options = {
+        method: 'GET',
+        throwHttpErrors: false,
+        retry: 0
+    };
+    const assetIdBase64 = base64.encode(id);
+    const assetResponse = await got(`${AAS_SERVER}/shells/${assetIdBase64}/aas/asset-information`, options);
 
-                            body.submodels.forEach((submodel) => {
-                                if (!_.isEmpty(submodel.identification.id)) {
-                                    ngsiEntities.push(transformSubmodel(submodel, id));
+try{ 
+   return JSON.parse(assetResponse.body);
+} catch(e) { 
+  console.log("Caught: " + e.message)
+    console.log(`${AAS_SERVER}/shells/${assetIdBase64}/aas/asset-information`)
+  return null;
+}
 
-                                    submodel.submodelElements.forEach((element) => {
-                                        if (!_.isEmpty(element.semanticId.keys)) {
-                                            ngsiEntities.push(transformSubmodelElement(element, submodel.idShort, id));
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
-                } catch (e) {
-                    debug(`${AAS_SERVER}/aas/${id}/aasenv`);
-                    debug(response.body);
-                }
+   
+}
 
-                debug(ngsiEntities.length);
+async function readAAS(id) {
+    const idBase64 = base64.encode(id);
+    const options = {
+        method: 'GET',
+        throwHttpErrors: false,
+        retry: 0
+    };
+    const response = await got(`${AAS_SERVER}/shells/${idBase64}/aas`, options);
 
-                resolve(ngsiEntities);
-            })
-            .catch((error) => {
-                return reject(error);
-            });
+
+    try{ 
+   return JSON.parse(response.body);
+} catch(e) { 
+  console.log("Caught: " + e.message)
+    console.log(`${AAS_SERVER}/shells/${idBase64}/aas`)
+  return null;
+}
+}
+
+async function assetToNGSIEntity(id) {
+    const asset = await readAsset(id);
+
+    const ngsiEntities = [];
+    ngsiEntity = transformAsset(asset, id);
+    if (ngsiEntity){
+        ngsiEntities.push(transformAsset(asset, id));
+    }
+    return ngsiEntities;
+}
+
+async function shellToNGSIEntities(id) {
+    const shell = await readAAS(id);
+
+    if (!shell){
+        return [];
+    }
+
+    const submodelRequests = [];
+    shell.submodels.forEach((submodel) => {
+        submodelRequests.push(readSubmodel(id, submodel.keys[0].value));
     });
+    const submodels = await Promise.all(submodelRequests);
+
+    const ngsiEntities = [];
+    ngsiEntities.push(transformAAS(shell, id));
+    submodels.forEach((submodel) => {
+        ngsiEntities.push(transformSubmodel(submodel, id));
+    });
+    return ngsiEntities;
 }
 
 /**
@@ -191,41 +226,36 @@ function getAAS(id) {
  * @param res - the response to return
  */
 async function readData(req, res) {
+    const requests = [];
+    const upsertsToCB = [];
     const options = {
         method: 'GET',
         throwHttpErrors: false,
         retry: 0
     };
 
-    got(`${AAS_SERVER}/server/listaas`, options).then((response) => {
-        const body = JSON.parse(response.body);
-        const readAAS = [];
-        body.aaslist.forEach((aas) => {
-            const parts = aas.split(' : ');
-            let promise = getAAS(parts[1]);
-            readAAS.push(promise);
-        });
-        Promise.all(readAAS)
-            .then((aasAsNGSI) => {
-                const pushAAS = [];
-                aasAsNGSI.forEach((ngsi) => {
-                    let promise = upsertNGSI(ngsi);
-                    pushAAS.push(promise);
-                });
-                Promise.all(pushAAS)
-                    .then((results) => {
-                        return res.send('OK');
-                    })
-                    .catch((error) => {
-                        debug(error);
-                        return res.send(error);
-                    });
-            })
-            .catch((error) => {
-                debug(error);
-                return res.send(error);
-            });
+    const shellsResponse = await got(`${AAS_SERVER}/shells`, options);
+    const shells = JSON.parse(shellsResponse.body);
+
+    shells.forEach(async function (shell) {
+        requests.push(shellToNGSIEntities(shell.identification.id));
+        requests.push(assetToNGSIEntity(shell.identification.id));
     });
+
+    const ngsiEntities = await Promise.all(requests);
+    ngsiEntities.forEach((ngsi) => {
+        upsertsToCB.push(upsertNGSI(ngsi));
+    });
+
+    Promise.all(upsertsToCB)
+        .then((results) => {
+            console.log(results);
+            return res.send('OK');
+        })
+        .catch((error) => {
+            debug(error);
+            return res.send(error);
+        });
 }
 
 exports.response = postEntity;
