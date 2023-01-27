@@ -249,6 +249,7 @@ async function proxyResponse(req, res) {
     const bodyIsJSONLD = req.get('Accept') === 'application/ld+json';
     const queryOptions = req.query.options ? req.query.options.split(',') : null;
     const queryAttrs = req.query.attrs ? req.query.attrs.split(',') : null;
+    const queryType = req.query.type ? req.query.type.split(',') : [];
 
     const transformFlags = {};
     transformFlags.sysAttrs = !!(queryOptions && queryOptions.includes('sysAttrs'));
@@ -314,6 +315,10 @@ async function proxyResponse(req, res) {
     if (req.query) {
         options.searchParams = req.query;
         delete options.searchParams.options;
+
+        if (queryType.length > 1){
+            delete options.searchParams.type;
+        }
         if (v2queryOptions && v2queryOptions.length > 0) {
             options.searchParams.options = v2queryOptions.join(',');
         }
@@ -335,9 +340,15 @@ async function proxyResponse(req, res) {
             res.headers['content-type'] = contentType;
             res.type(contentType);
             const body = JSON.parse(response.body);
+            const type = body.type;
             if (res.statusCode === 400) {
                 res.headers['content-type'] = 'application/json';
                 return res.send(body);
+            }
+
+            if (queryType.length > 1 && !queryType.includes(type) ){
+                res.statusCode === 404;
+                return res.send();
             }
 
             if (!bodyIsJSONLD) {

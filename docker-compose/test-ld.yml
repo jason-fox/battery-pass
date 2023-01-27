@@ -68,14 +68,14 @@ services:
   aasx-server1:
     labels:
       org.fiware: 'demo'
-    image: adminshellio/aasx-server-core-for-demo
+    image: adminshellio/aasx-server-blazor-for-demo-arm64:v2022-07-25.alpha
     hostname: aasx-server1
     container_name: aasx-server1
     ports:
-        - "51310:51310"
+        - "5001:5001"
     command: -rest 
     volumes:
-        - aasx-models:/AasxServerCore/aasxs
+        - aasx-models:/AasxServerBlazor/aasxs
     networks:
       - default
 
@@ -83,11 +83,11 @@ services:
   aasx-server2:
     labels:
       org.fiware: 'demo'
-    image: adminshellio/aasx-server-core-for-demo
+    image: adminshellio/aasx-server-blazor-for-demo-arm64:v2022-07-25.alpha
     hostname: aasx-server2
     container_name: aasx-server2
     ports:
-        - "51311:51310"
+        - "5002:5001"
     command: -rest 
     networks:
       - default
