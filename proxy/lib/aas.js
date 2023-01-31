@@ -8,7 +8,7 @@ const base64 = require('base-64');
 
 const NGSI_LD_URN = 'urn:ngsi-ld:';
 const JSON_LD_CONTEXT =
-    process.env.CONTEXT_URL || 'https://fiware.github.io/tutorials.Step-by-Step/tutorials-context.jsonld';
+    process.env.CONTEXT_URL || 'http://localhost:3004/ngsi-context.jsonld';
 const CONTEXT_BROKER = process.env.BROKER_URL || 'http://localhost:1026';
 const AAS_SERVER = process.env.AAS_URL || 'http://localhost:5001';
 

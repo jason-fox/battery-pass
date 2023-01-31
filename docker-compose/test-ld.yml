@@ -47,7 +47,7 @@ services:
       - PORT=3000
       - CONTEXT_URL=http://context/ngsi-context.jsonld
       - BROKER_URL=http://orion:1026
-      - AAS_URL= http://aasx-server1:51310
+      - AAS_URL= http://aasx-server1:5001
 
   proxy2:
     labels:
@@ -62,7 +62,7 @@ services:
       - PORT=3000
       - CONTEXT_URL=http://context/ngsi-context.jsonld
       - BROKER_URL=http://orion2:1026
-      - AAS_URL= http://aasx-server2:51310
+      - AAS_URL= http://aasx-server2:5001
 
   # Adminstrative Asset Shell
   aasx-server1:
@@ -72,7 +72,9 @@ services:
     hostname: aasx-server1
     container_name: aasx-server1
     ports:
+        - "51310:51310"
         - "5001:5001"
+        - "1883:1883"
     command: -rest 
     volumes:
         - aasx-models:/AasxServerBlazor/aasxs
@@ -88,7 +90,8 @@ services:
     container_name: aasx-server2
     ports:
         - "5002:5001"
-    command: -rest 
+        - "1884:1883"
+    command: -rest --mqtt
     networks:
       - default
 
