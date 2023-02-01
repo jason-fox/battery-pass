@@ -5,10 +5,10 @@ const getReasonPhrase = require('http-status-codes').getReasonPhrase;
 const _ = require('lodash');
 
 const base64 = require('base-64');
+const cleanDeep = require('clean-deep')
 
 const NGSI_LD_URN = 'urn:ngsi-ld:';
-const JSON_LD_CONTEXT =
-    process.env.CONTEXT_URL || 'http://localhost:3004/ngsi-context.jsonld';
+const JSON_LD_CONTEXT = process.env.CONTEXT_URL || 'http://context/ngsi-context.jsonld';
 const CONTEXT_BROKER = process.env.BROKER_URL || 'http://localhost:1026';
 const AAS_SERVER = process.env.AAS_URL || 'http://localhost:5001';
 
@@ -22,13 +22,50 @@ const template = require('handlebars').compile(
 
 const error_content_type = 'application/json';
 
+function treatObject(input){
+    _.forEach(input, function(value, key) {
+        if (_.isNull(value)){
+            delete input.key
+        } 
+        if (_.isArray(value)){
+            input[key] = treatArray(value);
+        }
+
+
+    });
+    return input;
+}
+
+
+function treatArray(input){
+    const array = [];
+    _.each(input, (elem) => {
+        array.push( cleanDeep(elem, {emptyArrays: false}))
+    });
+    return array;
+}
+
 function treatBody(body) {
     const payload = {};
     _.each(_.keys(body), (key) => {
-        if (body[key] !== null) {
-            payload[key] = { type: 'Property', value: body[key] };
+        const value = body[key];
+   
+        if (_.isNull(value)) {
+            // JSON literal null ?
+         } else if (!_.isObject(value)) {
+            // Primitives
+            payload[key] = { type: 'Property', value};
+        } else if (_.isArray(value)) {
+            const arr = treatArray(value);
+           payload[key] = { type: 'Property', value:  arr};
+        } else {
+           const obj = treatObject(value);
+           payload[key] = { type: 'Property', value: obj };
         }
     });
+
+
+    console.log(JSON.stringify(payload, 2))
     return payload;
 }
 
@@ -76,46 +113,37 @@ async function postEntity(req, res) {
     res.send(treatBody(req.body));
 }
 
+function asURN(assetId) {
+    return assetId.includes(':') ? assetId: 'urn:'+ assetId ;
+}
+
 function transformAAS(aas, assetId) {
     const payload = treatBody(aas);
 
-    (payload.type = 'I4AAS'), (payload.id = `urn:ngsi-ld:I4AAS:${assetId.replace(/^https?\:\/\//i, '')}`);
-
-    debug(payload.id);
+    payload.type = 'I4AAS';
+    payload.id = asURN(assetId);
+    debug('AAS: ', payload.id);
     return payload;
 }
 
 function transformAsset(asset, assetId) {
-    if (!asset || !asset.idShort){
+    if (!asset || !asset.idShort) {
         return null;
     }
 
     const payload = treatBody(asset);
-    const id = encodeURI(assetId + ':' + asset.idShort.trim());
 
-    (payload.type = 'I4Asset'), (payload.id = `urn:ngsi-ld:I4Asset:${id.replace(/^https?\:\/\//i, '')}`);
-
-    debug(payload.id);
+    payload.type = 'I4Asset';
+    payload.id = asURN(assetId);
+    debug('Asset: ', payload.id);
     return payload;
 }
 
 function transformSubmodel(submodel, assetId) {
     const payload = treatBody(submodel);
-    const id = encodeURI(assetId + ':' + submodel.idShort.trim());
-
-    (payload.type = 'I4Submodel'), (payload.id = `urn:ngsi-ld:I4Submodel:${id.replace(/^https?\:\/\//i, '')}`);
-
-    debug(payload.id);
-    return payload;
-}
-
-function transformSubmodelElement(element, submodelId, assetId) {
-    const payload = treatBody(element);
-    const id = encodeURI(assetId + ':' + submodelId + ':' + element.idShort.trim());
-
-    (payload.type = 'I4SubmodelProperty'),
-        (payload.id = `urn:ngsi-ld:I4SubmodelProperty:${id.replace(/^https?\:\/\//i, '')}`);
-
+    payload.type = 'I4Submodel';
+    payload.id = asURN(assetId);
+    debug('Submodel: ', payload.id);
     return payload;
 }
 
@@ -158,15 +186,13 @@ async function readAsset(id) {
     const assetIdBase64 = base64.encode(id);
     const assetResponse = await got(`${AAS_SERVER}/shells/${assetIdBase64}/aas/asset-information`, options);
 
-try{ 
-   return JSON.parse(assetResponse.body);
-} catch(e) { 
-  console.log("Caught: " + e.message)
-    console.log(`${AAS_SERVER}/shells/${assetIdBase64}/aas/asset-information`)
-  return null;
-}
-
-   
+    try {
+        return JSON.parse(assetResponse.body);
+    } catch (e) {
+        console.log('Caught: ' + e.message);
+        console.log(`${AAS_SERVER}/shells/${assetIdBase64}/aas/asset-information`);
+        return null;
+    }
 }
 
 async function readAAS(id) {
@@ -178,23 +204,24 @@ async function readAAS(id) {
     };
     const response = await got(`${AAS_SERVER}/shells/${idBase64}/aas`, options);
 
-
-    try{ 
-   return JSON.parse(response.body);
-} catch(e) { 
-  console.log("Caught: " + e.message)
-    console.log(`${AAS_SERVER}/shells/${idBase64}/aas`)
-  return null;
-}
+    try {
+        return JSON.parse(response.body);
+    } catch (e) {
+        console.log('Caught: ' + e.message);
+        console.log(`${AAS_SERVER}/shells/${idBase64}/aas`);
+        return null;
+    }
 }
 
 async function assetToNGSIEntity(id) {
     const asset = await readAsset(id);
-
     const ngsiEntities = [];
-    ngsiEntity = transformAsset(asset, id);
-    if (ngsiEntity){
-        ngsiEntities.push(transformAsset(asset, id));
+
+    if (asset && asset.identification) {
+        const ngsiEntity = transformAsset(asset, asset.identification.id);
+        if (ngsiEntity) {
+            ngsiEntities.push(ngsiEntity);
+        }
     }
     return ngsiEntities;
 }
@@ -202,7 +229,7 @@ async function assetToNGSIEntity(id) {
 async function shellToNGSIEntities(id) {
     const shell = await readAAS(id);
 
-    if (!shell){
+    if (!shell) {
         return [];
     }
 
@@ -215,7 +242,7 @@ async function shellToNGSIEntities(id) {
     const ngsiEntities = [];
     ngsiEntities.push(transformAAS(shell, id));
     submodels.forEach((submodel) => {
-        ngsiEntities.push(transformSubmodel(submodel, id));
+        ngsiEntities.push(transformSubmodel(submodel, submodel.identification.id));
     });
     return ngsiEntities;
 }
