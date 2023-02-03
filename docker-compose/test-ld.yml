@@ -47,7 +47,8 @@ services:
       - PORT=3000
       - CONTEXT_URL=http://context/ngsi-context.jsonld
       - BROKER_URL=http://orion:1026
-      - AAS_URL= http://aasx-server1:5001
+      - AAS_URL=http://aasx-server1:5001
+      - PROXY_URL=http://proxy1:3000
 
   proxy2:
     labels:
@@ -62,7 +63,8 @@ services:
       - PORT=3000
       - CONTEXT_URL=http://context/ngsi-context.jsonld
       - BROKER_URL=http://orion2:1026
-      - AAS_URL= http://aasx-server2:5001
+      - AAS_URL=http://aasx-server2:5001
+      - PROXY_URL=http://proxy2:3000
 
   # Adminstrative Asset Shell
   aasx-server1:
@@ -75,9 +77,9 @@ services:
         - "51310:51310"
         - "5001:5001"
         - "1883:1883"
-    command: -rest 
+    command: -rest --mqtt
     volumes:
-        - aasx-models:/AasxServerBlazor/aasxs
+        - aasx-models-1:/AasxServerBlazor/aasxs
     networks:
       - default
 
@@ -89,9 +91,12 @@ services:
     hostname: aasx-server2
     container_name: aasx-server2
     ports:
+        - "51311:51310"
         - "5002:5001"
         - "1884:1883"
     command: -rest --mqtt
+    volumes:
+        - aasx-models-2:/AasxServerBlazor/aasxs
     networks:
       - default
 
@@ -236,9 +241,17 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/data-models
-  aasx-models:
+  
+  aasx-models-1:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${PWD}/aasxs
+      device: ${PWD}/aasxs-1
+   
+  aasx-models-2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/aasxs-2

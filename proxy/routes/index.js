@@ -1,6 +1,6 @@
-var express = require('express');
-var router = express.Router();
-var proxy = require('../lib/proxy');
+const express = require('express');
+const router = express.Router();
+const proxy = require('../lib/proxy');
 
 /* GET users listing. */
 router.get('/', function (req, res, next) {

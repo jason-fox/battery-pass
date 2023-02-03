@@ -1,13 +1,13 @@
-var express = require('express');
+const express = require('express');
 const router = express.Router();
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
 
-var indexRouter = require('./routes/index');
-var aasRouter = require('./routes/aas');
+const indexRouter = require('./routes/index');
+const aasRouter = require('./routes/aas');
 
-var app = express();
+const app = express();
 app.disable('x-powered-by');
 
 app.use(logger('dev'));

@@ -14,8 +14,6 @@ const getReasonPhrase = require('http-status-codes').getReasonPhrase;
 const _ = require('lodash');
 const moment = require('moment-timezone');
 const path = require('node:path');
-const jsonld = require('jsonld');
-const parseLinks = require('parse-links');
 
 const PROXY_URL = process.env.PROXY || 'http://localhost:1026/v2';
 const NGSI_LD_URN = 'urn:ngsi-ld:';
@@ -34,7 +32,7 @@ const template = require('handlebars').compile(
   }`
 );
 
-const error_content_type = 'application/json';
+const errorContentType = 'application/json';
 
 /**
  * Determines if a value is of type float
@@ -226,7 +224,7 @@ function convertAttrNGSILD(attr, transformFlags) {
 function internalError(res, e, component) {
     const message = e ? e.message : undefined;
     debug(`Error in ${component} communication `, message ? message : e);
-    res.setHeader('Content-Type', error_content_type);
+    res.setHeader('Content-Type', errorContentType);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(
         template({
             type: 'urn:dx:as:InternalServerError',
@@ -283,7 +281,7 @@ async function proxyResponse(req, res) {
                     obj[key] = id;
                     if (!id.startsWith(NGSI_LD_URN)) {
                         obj[key] = NGSI_LD_URN + json.type + ':' + id;
-                        debug(context, 'Amending id to a valid URN: %s', obj[key]);
+                        debug('Amending id to a valid URN: %s', obj[key]);
                     }
                     break;
                 case 'type':
@@ -303,9 +301,9 @@ async function proxyResponse(req, res) {
     }
 
     headers['x-forwarded-for'] = getClientIp(req);
-    headers['accept'] = 'application/json';
+    headers.accept = 'application/json';
 
-    options = {
+    const options = {
         method: req.method,
         headers,
         throwHttpErrors: false,
@@ -333,53 +331,48 @@ async function proxyResponse(req, res) {
         options.searchParams.sysAttrs = 'true';
     }
 
-    got(PROXY_URL + req.path, options)
-        .then((response) => {
-            res.statusCode = response.statusCode;
-            res.headers = response.headers;
-            res.headers['content-type'] = contentType;
-            res.type(contentType);
-            const body = JSON.parse(response.body);
-            const type = body.type;
-            if (res.statusCode === 400) {
-                res.headers['content-type'] = 'application/json';
-                return res.send(body);
-            }
+    const response = await got(PROXY_URL + req.path, options);
 
-            if (queryType.length > 1 && !queryType.includes(type)) {
-                res.statusCode === 404;
-                return res.send();
-            }
+    res.statusCode = response.statusCode;
+    res.headers = response.headers;
+    res.headers['content-type'] = contentType;
+    res.type(contentType);
+    const body = JSON.parse(response.body);
+    const type = body.type;
+    if (res.statusCode === 400) {
+        res.headers['content-type'] = 'application/json';
+        return res.send(body);
+    }
 
-            if (!bodyIsJSONLD) {
-                res.header(
-                    'Link',
-                    '<' + JSON_LD_CONTEXT + '>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
-                );
-            }
+    if (queryType.length > 1 && !queryType.includes(type)) {
+        res.statusCode = 404;
+        return res.send();
+    }
 
-            if (transformFlags.keyValues) {
-                ldPayload = body;
-                if (bodyIsJSONLD) {
-                    ldPayload['@context'] = JSON_LD_CONTEXT;
-                }
-            } else if (transformFlags.attrsOnly) {
-                ldPayload = convertAttrNGSILD(body, transformFlags);
-                if (bodyIsJSONLD) {
-                    ldPayload['@context'] = JSON_LD_CONTEXT;
-                }
-            } else if (body instanceof Array) {
-                ldPayload = _.map(body, formatAsNGSILD);
-            } else {
-                ldPayload = formatAsNGSILD(body);
-            }
+    if (!bodyIsJSONLD) {
+        res.header(
+            'Link',
+            '<' + JSON_LD_CONTEXT + '>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"'
+        );
+    }
 
-            return ldPayload ? res.send(ldPayload) : res.send();
-        })
-        .catch((error) => {
-            debug(error);
-            return internalError(res, error, 'Proxy');
-        });
+    if (transformFlags.keyValues) {
+        ldPayload = body;
+        if (bodyIsJSONLD) {
+            ldPayload['@context'] = JSON_LD_CONTEXT;
+        }
+    } else if (transformFlags.attrsOnly) {
+        ldPayload = convertAttrNGSILD(body, transformFlags);
+        if (bodyIsJSONLD) {
+            ldPayload['@context'] = JSON_LD_CONTEXT;
+        }
+    } else if (body instanceof Array) {
+        ldPayload = _.map(body, formatAsNGSILD);
+    } else {
+        ldPayload = formatAsNGSILD(body);
+    }
+
+    return ldPayload ? res.send(ldPayload) : res.send();
 }
 
 exports.response = proxyResponse;

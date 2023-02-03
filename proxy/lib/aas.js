@@ -1,46 +1,37 @@
 const debug = require('debug')('aas:access');
 const got = require('got');
-const StatusCodes = require('http-status-codes').StatusCodes;
-const getReasonPhrase = require('http-status-codes').getReasonPhrase;
 const _ = require('lodash');
+const constants = require('./constants');
+//const subscription = require('./subscription');
 
 const base64 = require('base-64');
-const cleanDeep = require('clean-deep')
+const cleanDeep = require('clean-deep');
 
-const NGSI_LD_URN = 'urn:ngsi-ld:';
 const JSON_LD_CONTEXT = process.env.CONTEXT_URL || 'http://context/ngsi-context.jsonld';
 const CONTEXT_BROKER = process.env.BROKER_URL || 'http://localhost:1026';
 const AAS_SERVER = process.env.AAS_URL || 'http://localhost:5001';
 
-const template = require('handlebars').compile(
-    `{
-    "type": "{{type}}",
-    "title": "{{title}}",
-    "detail": "{{message}}"
-  }`
-);
+const retryTime = constants.DEFAULT_RETRY_TIME;
+const retries = constants.DEFAULT_RETRIES;
+let isConnecting = false;
+let numRetried = 0;
 
-const error_content_type = 'application/json';
-
-function treatObject(input){
-    _.forEach(input, function(value, key) {
-        if (_.isNull(value)){
-            delete input.key
-        } 
-        if (_.isArray(value)){
+function treatObject(input) {
+    _.forEach(input, function (value, key) {
+        if (_.isNull(value)) {
+            delete input.key;
+        }
+        if (_.isArray(value)) {
             input[key] = treatArray(value);
         }
-
-
     });
     return input;
 }
 
-
-function treatArray(input){
+function treatArray(input) {
     const array = [];
     _.each(input, (elem) => {
-        array.push( cleanDeep(elem, {emptyArrays: false}))
+        array.push(cleanDeep(elem, { emptyArrays: false }));
     });
     return array;
 }
@@ -49,72 +40,25 @@ function treatBody(body) {
     const payload = {};
     _.each(_.keys(body), (key) => {
         const value = body[key];
-   
+
         if (_.isNull(value)) {
             // JSON literal null ?
-         } else if (!_.isObject(value)) {
+        } else if (!_.isObject(value)) {
             // Primitives
-            payload[key] = { type: 'Property', value};
+            payload[key] = { type: 'Property', value };
         } else if (_.isArray(value)) {
             const arr = treatArray(value);
-           payload[key] = { type: 'Property', value:  arr};
+            payload[key] = { type: 'Property', value: arr };
         } else {
-           const obj = treatObject(value);
-           payload[key] = { type: 'Property', value: obj };
+            const obj = treatObject(value);
+            payload[key] = { type: 'Property', value: obj };
         }
     });
-
-
-    console.log(JSON.stringify(payload, 2))
     return payload;
 }
 
-/**
- * Return an "Internal Error" response. These should not occur
- * during standard operation
- *
- * @param res - the response to return
- * @param e - the error that occurred
- * @param component - the component that caused the error
- */
-function internalError(res, e, component) {
-    const message = e ? e.message : undefined;
-    debug(`Error in ${component} communication `, message ? message : e);
-    res.setHeader('Content-Type', error_content_type);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(
-        template({
-            type: 'urn:dx:as:InternalServerError',
-            title: getReasonPhrase(StatusCodes.INTERNAL_SERVER_ERROR),
-            message
-        })
-    );
-}
-
-/**
- *
- * @param req - the incoming request
- * @param res - the response to return
- */
-async function postEntity(req, res) {
-    const headers = req.headers;
-    const contentType = req.get('Accept');
-    headers['accept'] = 'application/json';
-
-    options = {
-        method: req.method,
-        headers,
-        throwHttpErrors: false,
-        retry: 0
-    };
-
-    if (req.query) {
-        options.searchParams = req.query;
-    }
-    res.send(treatBody(req.body));
-}
-
 function asURN(assetId) {
-    return assetId.includes(':') ? assetId: 'urn:'+ assetId ;
+    return assetId.includes(':') ? assetId : 'urn:' + assetId;
 }
 
 function transformAAS(aas, assetId) {
@@ -155,13 +99,14 @@ async function upsertNGSI(entities) {
     const options = {
         url: `${CONTEXT_BROKER}/ngsi-ld/v1/entityOperations/upsert/`,
         method: 'POST',
+        throwHttpErrors: false,
         json: entities,
         headers: {
             'Content-Type': 'application/json',
             Link: `<${JSON_LD_CONTEXT}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`
         }
     };
-    response = await got(options);
+    const response = await got(options);
     return response.statusCode;
 }
 
@@ -255,35 +200,60 @@ async function shellToNGSIEntities(id) {
 async function readData(req, res) {
     const requests = [];
     const upsertsToCB = [];
-    const options = {
-        method: 'GET',
-        throwHttpErrors: false,
-        retry: 0
-    };
+    try {
+        const options = {
+            method: 'GET',
+            throwHttpErrors: false,
+            retry: 0
+        };
 
-    const shellsResponse = await got(`${AAS_SERVER}/shells`, options);
-    const shells = JSON.parse(shellsResponse.body);
+        const shellsResponse = await got(`${AAS_SERVER}/shells`, options);
+        const shells = JSON.parse(shellsResponse.body);
 
-    shells.forEach(async function (shell) {
-        requests.push(shellToNGSIEntities(shell.identification.id));
-        requests.push(assetToNGSIEntity(shell.identification.id));
-    });
-
-    const ngsiEntities = await Promise.all(requests);
-    ngsiEntities.forEach((ngsi) => {
-        upsertsToCB.push(upsertNGSI(ngsi));
-    });
-
-    Promise.all(upsertsToCB)
-        .then((results) => {
-            console.log(results);
-            return res.send('OK');
-        })
-        .catch((error) => {
-            debug(error);
-            return res.send(error);
+        shells.forEach(function (shell) {
+            requests.push(shellToNGSIEntities(shell.identification.id));
+            requests.push(assetToNGSIEntity(shell.identification.id));
         });
+
+        const ngsiEntities = await Promise.all(requests);
+        ngsiEntities.forEach((ngsi) => {
+            upsertsToCB.push(upsertNGSI(ngsi));
+        });
+
+        const results = await Promise.all(upsertsToCB);
+        debug(`Upsert returns: ${results}`);
+        return res ? res.send('OK') : true;
+    } catch (e) {
+        debug(`Something went wrong: ${e.message}`);
+        return res ? res.send(e) : false;
+    }
 }
 
-exports.response = postEntity;
+/* eslint-disable consistent-return */
+async function connectToAASServer(callback) {
+    debug('creating AAS connection');
+    if (isConnecting) {
+        return;
+    }
+    isConnecting = true;
+    // Ensure clientId is unique when reconnect to avoid loop closing old connection which the same name
+    const success = await readData();
+    isConnecting = false;
+    if (success === false) {
+        debug('error AAS data not created');
+        if (numRetried <= retries) {
+            numRetried++;
+            return setTimeout(connectToAASServer, retryTime * 1000, callback);
+        }
+        debug('failed');
+        return callback ? callback() : false;
+    }
+    debug('AAS data created successfully');
+    return callback ? callback() : true;
+} // function connectToAASServer
+
+setTimeout(connectToAASServer, retryTime * 1000, function () {
+    //setTimeout(subscription.create, retryTime * 1000);
+});
+
 exports.readData = readData;
