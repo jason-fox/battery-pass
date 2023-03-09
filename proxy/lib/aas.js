@@ -16,79 +16,8 @@ const retries = constants.DEFAULT_RETRIES;
 let isConnecting = false;
 let numRetried = 0;
 
-function treatObject(input) {
-    _.forEach(input, function (value, key) {
-        if (_.isNull(value)) {
-            delete input.key;
-        }
-        if (_.isArray(value)) {
-            input[key] = treatArray(value);
-        }
-    });
-    return input;
-}
-
-function treatArray(input) {
-    const array = [];
-    _.each(input, (elem) => {
-        array.push(cleanDeep(elem, { emptyArrays: false }));
-    });
-    return array;
-}
-
-function treatBody(body) {
-    const payload = {};
-    _.each(_.keys(body), (key) => {
-        const value = body[key];
-
-        if (_.isNull(value)) {
-            // JSON literal null ?
-        } else if (!_.isObject(value)) {
-            // Primitives
-            payload[key] = { type: 'Property', value };
-        } else if (_.isArray(value)) {
-            const arr = treatArray(value);
-            payload[key] = { type: 'Property', value: arr };
-        } else {
-            const obj = treatObject(value);
-            payload[key] = { type: 'Property', value: obj };
-        }
-    });
-    return payload;
-}
-
 function asURN(assetId) {
     return assetId.includes(':') ? assetId : 'urn:' + assetId;
-}
-
-function transformAAS(aas, assetId) {
-    const payload = treatBody(aas);
-
-    payload.type = 'I4AAS';
-    payload.id = asURN(assetId);
-    debug('AAS: ', payload.id);
-    return payload;
-}
-
-function transformAsset(asset, assetId) {
-    if (!asset || !asset.idShort) {
-        return null;
-    }
-
-    const payload = treatBody(asset);
-
-    payload.type = 'I4Asset';
-    payload.id = asURN(assetId);
-    debug('Asset: ', payload.id);
-    return payload;
-}
-
-function transformSubmodel(submodel, assetId) {
-    const payload = treatBody(submodel);
-    payload.type = 'I4Submodel';
-    payload.id = asURN(assetId);
-    debug('Submodel: ', payload.id);
-    return payload;
 }
 
 async function upsertNGSI(entities) {
@@ -107,10 +36,15 @@ async function upsertNGSI(entities) {
         }
     };
     const response = await got(options);
+
+    if (response.statusCode === 207) {
+        console.log(response.body);
+    }
     return response.statusCode;
 }
 
 async function readSubmodel(id, submodelId) {
+    let body = { submodelElements: [] };
     const options = {
         method: 'GET',
         throwHttpErrors: false,
@@ -119,7 +53,16 @@ async function readSubmodel(id, submodelId) {
     const idBase64 = base64.encode(id);
     const submodelIdBase64 = base64.encode(submodelId);
     const response = await got(`${AAS_SERVER}/shells/${idBase64}/aas/submodels/${submodelIdBase64}/submodel`, options);
-    return JSON.parse(response.body);
+
+    try {
+        body = JSON.parse(response.body);
+    } catch (e) {
+        console.log(`${AAS_SERVER}/shells/${idBase64}/aas/submodels/${submodelIdBase64}/submodel`);
+        console.log(id);
+        console.log(submodelId);
+    }
+
+    return body;
 }
 
 async function readAsset(id) {
@@ -158,38 +101,30 @@ async function readAAS(id) {
     }
 }
 
-async function assetToNGSIEntity(id) {
-    const asset = await readAsset(id);
-    const ngsiEntities = [];
-
-    if (asset && asset.identification) {
-        const ngsiEntity = transformAsset(asset, asset.identification.id);
-        if (ngsiEntity) {
-            ngsiEntities.push(ngsiEntity);
+function castToType(valueType, value) {
+    let castValue = value;
+    if (valueType === undefined || valueType.dataObjectType === undefined) {
+        if (_.isArray(value)) {
+            castValue = {};
+            value.forEach((attr) => {
+                castValue[attr.idShort] = attr.value;
+            });
+        }
+    } else {
+        switch (valueType.dataObjectType.name) {
+            case 'integer':
+                castValue = parseInt(value);
+                break;
+            case 'float':
+                castValue = parseFloat(value);
+                break;
+            case 'long':
+                castValue = parseFloat(value);
+                break;
         }
     }
-    return ngsiEntities;
-}
 
-async function shellToNGSIEntities(id) {
-    const shell = await readAAS(id);
-
-    if (!shell) {
-        return [];
-    }
-
-    const submodelRequests = [];
-    shell.submodels.forEach((submodel) => {
-        submodelRequests.push(readSubmodel(id, submodel.keys[0].value));
-    });
-    const submodels = await Promise.all(submodelRequests);
-
-    const ngsiEntities = [];
-    ngsiEntities.push(transformAAS(shell, id));
-    submodels.forEach((submodel) => {
-        ngsiEntities.push(transformSubmodel(submodel, submodel.identification.id));
-    });
-    return ngsiEntities;
+    return castValue;
 }
 
 /**
@@ -198,7 +133,7 @@ async function shellToNGSIEntities(id) {
  * @param res - the response to return
  */
 async function readData(req, res) {
-    const requests = [];
+    const ngsiEntities = [];
     const upsertsToCB = [];
     try {
         const options = {
@@ -210,18 +145,107 @@ async function readData(req, res) {
         const shellsResponse = await got(`${AAS_SERVER}/shells`, options);
         const shells = JSON.parse(shellsResponse.body);
 
-        shells.forEach(function (shell) {
-            requests.push(shellToNGSIEntities(shell.identification.id));
-            requests.push(assetToNGSIEntity(shell.identification.id));
+        shells.forEach(async function (shell) {
+            const entity = {};
+            const id = shell.identification.id;
+            const adminAsset = await readAAS(id);
+            const asset = await readAsset(id);
+            const submodelRequests = [];
+            shell.submodels.forEach((submodel) => {
+                submodelRequests.push(readSubmodel(id, submodel.keys[0].value));
+            });
+            const submodels = await Promise.all(submodelRequests);
+
+            entity.type = 'Asset';
+            entity.id = asURN(shell.identification.id);
+            entity.idShort = {
+                type: 'Property',
+                value: shell.idShort
+            };
+
+            if (!_.isNull(shell.category)) {
+                entity.idShort.category = {
+                    type: 'Property',
+                    value: shell.category
+                };
+            }
+
+            submodels.forEach((submodel) => {
+                const metadata = {
+                    type: 'Property',
+                    value: submodel.idShort
+                };
+
+                submodel.submodelElements.forEach((elem) => {
+                    if (_.isNull(elem.value)) {
+                        return;
+                    }
+
+                    attrName = encodeURIComponent(elem.idShort);
+
+                    entity[attrName] = {
+                        type: 'Property',
+
+                        semanticId: {
+                            type: 'Property',
+                            value: elem.semanticId
+                        },
+                        kind: {
+                            type: 'Property',
+                            value: elem.kind
+                        },
+                        submodel: metadata
+                    };
+
+                    if (!_.isNull(elem.category)) {
+                        entity[attrName].category = {
+                            type: 'Property',
+                            value: elem.category
+                        };
+                    }
+
+                    if (typeof elem.valueType !== 'undefined' && !_.isEmpty(elem.valueType)) {
+                        entity[attrName].valueType = {
+                            type: 'Property',
+                            value: elem.valueType
+                        };
+                    }
+
+                    if (elem.modelType.name === 'File') {
+                        entity[attrName].value = elem.value;
+                        entity[attrName].mimeType = {
+                            type: 'Property',
+                            value: elem.mimeType
+                        };
+                    } else if (elem.modelType.name === 'MultiLanguageProperty') {
+                        const obj = {};
+                        elem.value.langString.forEach((attr) => {
+                            obj[attr.language] = attr.text;
+                        });
+
+                        entity[attrName].type = 'LanguageProperty';
+                        entity[attrName].languageMap = obj;
+                        delete entity[attrName].value;
+                        delete entity[attrName].valueType;
+                    } else if (elem.modelType.name === 'Property') {
+                        entity[attrName].value = castToType(elem.valueType, elem.value) || '';
+                    } else if (elem.modelType.name === 'SubmodelElementCollection') {
+                        const obj = {};
+                        elem.value.forEach((attr) => {
+                            obj[attr.idShort] = castToType(attr.valueType, attr.value);
+                        });
+
+                        entity[attrName].value = castToType({ dataObjectType: { name: 'Object' } }, obj);
+                        entity[attrName].valueType = {
+                            type: 'Property',
+                            value: 'SubmodelElementCollection'
+                        };
+                    }
+                });
+            });
+            await upsertNGSI([entity]);
         });
 
-        const ngsiEntities = await Promise.all(requests);
-        ngsiEntities.forEach((ngsi) => {
-            upsertsToCB.push(upsertNGSI(ngsi));
-        });
-
-        const results = await Promise.all(upsertsToCB);
-        debug(`Upsert returns: ${results}`);
         return res ? res.send('OK') : true;
     } catch (e) {
         debug(`Something went wrong: ${e.message}`);
